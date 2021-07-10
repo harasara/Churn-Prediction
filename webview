@@ -1,0 +1,147 @@
+import streamlit as st
+from sklearn import datasets
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+from xgboost import XGBClassifier
+
+
+st.write("""
+# Credit Card Churner Prediction
+This app predicts the whether your customer is about to churn or not !!!
+""")
+
+st.sidebar.header('User Input Parameters')
+
+def user_input_features():
+    Customer_Age = st.sidebar.slider('Customer Age', 0, 90, 35)
+    Dependent_count = st.sidebar.slider('Dependent Count', 1, 10, 3)
+    Months_on_book = st.sidebar.slider('Months_on_book', 1, 100, 36)
+    Total_Relationship_Count = st.sidebar.slider('Total_Relationship_Count', 1, 10, 3)
+    Months_Inactive_12_mon = st.sidebar.slider('Months_Inactive_12_mon', 1, 12, 5)
+    Contacts_Count_12_mon = st.sidebar.slider('Contacts_Count_12_mon', 1,50, 5)
+    Credit_Limit = st.sidebar.slider('Credit_Limit', 1000, 50000, 20000)
+    Total_Revolving_Bal = st.sidebar.slider('Total_Revolving_Bal', 0, 3000,2500)
+    Avg_Open_To_Buy = st.sidebar.slider('Avg_Open_To_Buy', 1000, 50000, 30000)
+    Total_Amt_Chng_Q4_Q1 = st.sidebar.slider('Total_Amt_Chng_Q4_Q1', 0, 5, 1)
+    Total_Trans_Amt = st.sidebar.slider('Total_Trans_Amt', 0,10000, 20000)
+    Total_Trans_Ct = st.sidebar.slider('Total_Trans_Ct', 1, 150, 100)
+    Total_Ct_Chng_Q4_Q1 = st.sidebar.slider('Total_Ct_Chng_Q4_Q1', 0, 5, 2)
+    Avg_Utilization_Ratio = st.sidebar.slider('Avg_Utilization_Ratio', 0.0, 1.0, 0.5)
+
+
+
+    data = {'Customer Age': Customer_Age,
+            'Dependent Count': Dependent_count,
+            'Months_on_book': Months_on_book,
+            'Total_Relationship_Count': Total_Relationship_Count,
+            'Months_Inactive_12_mon' : Months_Inactive_12_mon,
+            'Contacts_Count_12_mon' : Contacts_Count_12_mon,
+            'Credit_Limit': Credit_Limit,
+            'Total_Revolving_Bal' : Total_Revolving_Bal,
+            'Avg_Open_To_Buy' : Avg_Open_To_Buy,
+            'Total_Amt_Chng_Q4_Q1' : Total_Amt_Chng_Q4_Q1,
+            'Total_Trans_Amt' : Total_Trans_Amt,
+            'Total_Trans_Ct' : Total_Trans_Ct,
+            'Total_Ct_Chng_Q4_Q1' : Total_Ct_Chng_Q4_Q1,
+            'Avg_Utilization_Ratio' : Avg_Utilization_Ratio
+
+            }
+    features = pd.DataFrame(data, index=[0])
+    return features
+
+dfU = user_input_features()
+
+st.subheader('User Input parameters')
+st.write(dfU)
+
+df=pd.read_csv(r'G:\\Edu\\My academics\\MSc in CS\\3rd sem\\Research\\Python files\\BankChurners.csv')
+
+
+df = pd.get_dummies(df, columns = ['Gender','Education_Level','Marital_Status','Income_Category','Card_Category'])
+df.drop(['CLIENTNUM','Gender_F', 'Gender_M', 'Education_Level_College',
+       'Education_Level_Doctorate', 'Education_Level_Graduate',
+       'Education_Level_High School', 'Education_Level_Post-Graduate',
+       'Education_Level_Uneducated', 'Education_Level_Unknown',
+       'Marital_Status_Divorced', 'Marital_Status_Married',
+       'Marital_Status_Single', 'Marital_Status_Unknown',
+       'Income_Category_$120K +', 'Income_Category_$40K - $60K',
+       'Income_Category_$60K - $80K', 'Income_Category_$80K - $120K',
+       'Income_Category_Less than $40K', 'Income_Category_Unknown',
+       'Card_Category_Blue', 'Card_Category_Gold', 'Card_Category_Platinum',
+       'Card_Category_Silver',
+'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_1',
+'Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_2'],axis = 1, inplace = True)
+
+
+
+target = df['Attrition_Flag']
+
+df1 = df.copy()
+df1 = df1.drop('Attrition_Flag', axis =1)
+X = df1
+y = target
+from sklearn.ensemble import RandomForestClassifier
+rf = RandomForestClassifier(n_estimators=10) 
+rf.fit(X, y)
+
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(3) 
+knn.fit(X, y)
+
+from sklearn.linear_model import LogisticRegression
+lr = LogisticRegression(max_iter=50)
+lr.fit(X, y)
+
+xgb = XGBClassifier()
+xgb.fit(X, y)
+
+from sklearn.naive_bayes import GaussianNB
+nb = GaussianNB()
+nb.fit(X, y)
+
+from sklearn.ensemble import AdaBoostClassifier
+abc = AdaBoostClassifier(n_estimators=50,learning_rate=1)
+abc.fit(X, y)
+
+from sklearn.tree import DecisionTreeClassifier
+dtree = DecisionTreeClassifier()
+dtree.fit(X,y)
+
+from sklearn.neural_network import MLPClassifier
+mlp = MLPClassifier(alpha=1, max_iter=1000)
+mlp.fit(X, y)
+
+from sklearn.ensemble import StackingClassifier
+
+from lightgbm import LGBMRegressor, LGBMClassifier, Booster
+
+estimator_list = [
+    ('knn',knn),
+    ('dtree',dtree),
+    ('rf',rf),
+    ('abc',abc),
+    ('xgb',xgb),
+     ('lr',lr),
+      ('mlp',mlp),
+    ('nb',nb)]
+
+# Build stack model
+stack_model = StackingClassifier(estimators=estimator_list, final_estimator=LGBMClassifier())
+
+# Train stacked model
+stack_model.fit(X, y)
+
+prediction = stack_model.predict(dfU)
+prediction_proba = stack_model.predict_proba(dfU)
+
+st.subheader('Class labels and their corresponding index number')
+st.write(df['Attrition_Flag'].unique())
+z= df['Attrition_Flag'].unique()
+st.subheader('Prediction')
+st.write(prediction)
+#st.write(prediction)
+
+st.subheader('Prediction Probability')
+st.write(prediction_proba)
